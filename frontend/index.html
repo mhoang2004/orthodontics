@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự đoán chỉnh nha - Niềng răng 3D</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-section">
+                <h1 class="logo">🦷 Tooth Alignment</h1>
+                <p class="subtitle">Nghiên cứu khoa học sinh viên 2026</p>
+            </div>
+            <p class="tagline">Dự đoán trước và sau khi chỉnh nha</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-box">
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h2>Tải lên ảnh của bạn</h2>
+                    <p>Hỗ trợ: JPG, PNG (tối đa 10MB)</p>
+                    <input type="file" id="imageInput" accept="image/*" />
+                </div>
+            </section>
+
+            <!-- Processing Status -->
+            <div id="statusMessage" class="status-message hidden"></div>
+            <div id="loadingSpinner" class="loading-spinner hidden">
+                <div class="spinner"></div>
+                <p>Đang xử lý... Vui lòng chờ (1-5 phút tùy vào hiệu năng máy)</p>
+            </div>
+
+            <!-- Before/After Comparison -->
+            <section id="comparisonSection" class="comparison-section hidden">
+                <h2>Kết quả dự đoán</h2>
+                <div class="comparison-container">
+                    <!-- Before Card -->
+                    <div class="comparison-card">
+                        <div class="card-header">TRƯỚC</div>
+                        <div class="image-wrapper">
+                            <img id="beforeImage" src="" alt="Ảnh gốc" />
+                        </div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="arrow">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </div>
+
+                    <!-- After Card -->
+                    <div class="comparison-card">
+                        <div class="card-header after">SAU</div>
+                        <div class="image-wrapper">
+                            <img id="afterImage" src="" alt="Ảnh sau xử lý" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Button -->
+                <div class="action-buttons">
+                    <button id="downloadBtn" class="btn btn-primary">📥 Tải kết quả</button>
+                    <button id="resetBtn" class="btn btn-secondary">🔄 Xử lý ảnh khác</button>
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="info-section">
+                <div class="info-card">
+                    <h3>📋 Hướng dẫn sử dụng</h3>
+                    <ol>
+                        <li>Tải lên ảnh chân dung của bạn (nên có khuôn mặt rõ, mặt trực diện)</li>
+                        <li>Ứng dụng sẽ tự động xử lý và dự đoán kết quả chỉnh nha</li>
+                        <li>So sánh trước/sau để thấy hiệu quả dự kiến</li>
+                        <li>Tải kết quả về máy để lưu trữ</li>
+                    </ol>
+                </div>
+
+                <div class="info-card">
+                    <h3>ℹ️ Thông tin kỹ thuật</h3>
+                    <p>
+                        Ứng dụng sử dụng mô hình học sâu (Deep Learning) để:
+                    </p>
+                    <ul>
+                        <li>Phát hiện và phân đoạn khuôn mặt</li>
+                        <li>Phân tích đặc điểm miệng và hàng răng</li>
+                        <li>Dự đoán hình ảnh sau khi chỉnh nha</li>
+                        <li>Tạo preview trực quan để giúp quyết định chỉnh nha</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2026 Nghiên cứu khoa học sinh viên | Dự án chỉnh nha thông minh</p>
+            <p class="footer-note">Backend API: <span id="apiStatus" class="status-ok">✓ Kết nối</span></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
