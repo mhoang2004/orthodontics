@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://192.168.43.179:8001';
+const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://localhost:8001';
 const API_ENDPOINT = `${BACKEND_URL}/infer`;
 const API_INTERACTIVE = `${BACKEND_URL}/infer-interactive`;
 
