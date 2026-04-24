@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://localhost:8001';
+const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://192.168.43.179:8001';
 const API_ENDPOINT = `${BACKEND_URL}/infer`;
 const API_INTERACTIVE = `${BACKEND_URL}/infer-interactive`;
 
@@ -147,6 +147,7 @@ async function handleImageSelect() {
 async function processImage(file) {
     if (isProcessing) return;
     isProcessing = true;
+    uploadBox.style.display = 'none';
 
     const formData = new FormData();
     formData.append('file', file);
@@ -251,7 +252,7 @@ function downloadResult() {
     
     const params = getSliderParams();
     const paramStr = `w${params.whiteness.toFixed(1)}_a${params.alignment.toFixed(1)}_t${params.timesteps}`;
-    link.download = `tooth-alignment-${paramStr}-${Date.now()}.png`;
+    link.download = `tooth-alignment-${Date.now()}.png`;
     
     document.body.appendChild(link);
     link.click();
@@ -268,6 +269,7 @@ function resetUI() {
     comparisonSection.classList.add('hidden');
     clearStatus();
     resetParams();
+    uploadBox.style.display = 'block';
     uploadBox.scrollIntoView({ behavior: 'smooth' });
 }
 
