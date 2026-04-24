@@ -1,28 +1,54 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dự đoán chỉnh nha - Niềng răng 3D</title>
+    <title>Dự đoán chỉnh nha - Niềng răng AI</title>
+    <meta name="description" content="Ứng dụng AI dự đoán kết quả chỉnh nha với điều khiển tương tác realtime">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="header">
+        <header class="header" id="appHeader">
+            <div class="header-glow"></div>
             <div class="logo-section">
-                <h1 class="logo">Tooth Alignment</h1>
+                <!-- <div class="logo-icon">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <path d="M20 4C11.164 4 4 11.164 4 20s7.164 16 16 16 16-7.164 16-16S28.836 4 20 4z"
+                            fill="url(#grad1)" opacity="0.2" />
+                        <path d="M13 22c0-1 .5-3 2-4s3-1 5-1 3.5 0 5 1 2 3 2 4" stroke="white" stroke-width="2"
+                            stroke-linecap="round" />
+                        <rect x="14" y="18" width="3" height="4" rx="1" fill="white" opacity="0.9" />
+                        <rect x="18.5" y="17" width="3" height="5" rx="1" fill="white" />
+                        <rect x="23" y="18" width="3" height="4" rx="1" fill="white" opacity="0.9" />
+                        <defs>
+                            <linearGradient id="grad1" x1="4" y1="4" x2="36" y2="36">
+                                <stop stop-color="#60A5FA" />
+                                <stop offset="1" stop-color="#A78BFA" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div> -->
+                <h1 class="logo">Hệ thống dự đoán hình dáng răng sau niềng</h1>
                 <p class="subtitle">Nghiên cứu khoa học sinh viên 2026</p>
             </div>
-            <p class="tagline">Dự đoán trước và sau khi chỉnh nha</p>
         </header>
 
         <!-- Main Content -->
         <main class="main">
             <!-- Upload Section -->
             <section class="upload-section">
-                <div class="upload-box">
-                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-pulse"></div>
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="17 8 12 3 7 8"></polyline>
                         <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -36,17 +62,31 @@
             <!-- Processing Status -->
             <div id="statusMessage" class="status-message hidden"></div>
             <div id="loadingSpinner" class="loading-spinner hidden">
-                <div class="spinner"></div>
-                <p>Đang xử lý... Vui lòng chờ (1-5 phút tùy vào hiệu năng máy)</p>
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <div class="spinner-ring"></div>
+                </div>
+                <p id="loadingText">Đang xử lý... Vui lòng chờ (1-5 phút)</p>
+                <div class="loading-progress">
+                    <div class="loading-bar" id="loadingBar"></div>
+                </div>
             </div>
 
             <!-- Before/After Comparison -->
             <section id="comparisonSection" class="comparison-section hidden">
-                <h2>Kết quả dự đoán</h2>
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M12 3v18M3 12h18"></path>
+                    </svg>
+                    Kết quả dự đoán
+                </h2>
                 <div class="comparison-container">
                     <!-- Before Card -->
                     <div class="comparison-card">
-                        <div class="card-header">TRƯỚC</div>
+                        <div class="card-header">
+                            <span class="card-badge before-badge">TRƯỚC</span>
+                        </div>
                         <div class="image-wrapper">
                             <img id="beforeImage" src="" alt="Ảnh gốc" />
                         </div>
@@ -54,50 +94,191 @@
 
                     <!-- Arrow -->
                     <div class="arrow">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <div class="arrow-pulse"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                             <polyline points="12 5 19 12 12 19"></polyline>
                         </svg>
                     </div>
 
                     <!-- After Card -->
-                    <div class="comparison-card">
-                        <div class="card-header after">SAU</div>
+                    <div class="comparison-card after-card">
+                        <div class="card-header after">
+                            <span class="card-badge after-badge">SAU</span>
+                        </div>
                         <div class="image-wrapper">
                             <img id="afterImage" src="" alt="Ảnh sau xử lý" />
                         </div>
                     </div>
                 </div>
 
+                <!-- ========== INTERACTIVE CONTROLS ========== -->
+                <div class="controls-panel" id="controlsPanel">
+                    <div class="controls-header">
+                        <h3>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                </path>
+                            </svg>
+                            Điều chỉnh tương tác
+                        </h3>
+                        <span class="controls-hint">Kéo slider rồi nhấn "Tái tạo" để thấy sự khác biệt</span>
+                    </div>
+
+                    <div class="controls-grid">
+                        <!-- Whiteness Slider -->
+                        <div class="control-item">
+                            <div class="control-label-row">
+                                <label for="whitenessSlider">
+                                    <span class="control-icon">✨</span>
+                                    Độ trắng răng
+                                </label>
+                                <span class="control-value" id="whitenessValue">1.00</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" id="whitenessSlider" min="0" max="200" value="100"
+                                    class="slider slider-whiteness" />
+                                <div class="slider-labels">
+                                    <span>Tự nhiên</span>
+                                    <span>Mặc định</span>
+                                    <span>Trắng sáng</span>
+                                </div>
+                            </div>
+                            <p class="control-desc">Điều chỉnh cường độ ánh sáng trên bề mặt răng. Tăng = răng trắng
+                                sáng hơn.</p>
+                        </div>
+
+                        <!-- Alignment Slider -->
+                        <div class="control-item">
+                            <div class="control-label-row">
+                                <label for="alignmentSlider">
+                                    <span class="control-icon">📐</span>
+                                    Cường độ alignment
+                                </label>
+                                <span class="control-value" id="alignmentValue">1.00</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" id="alignmentSlider" min="0" max="200" value="100"
+                                    class="slider slider-alignment" />
+                                <div class="slider-labels">
+                                    <span>Tự do</span>
+                                    <span>Mặc định</span>
+                                    <span>Chặt chẽ</span>
+                                </div>
+                            </div>
+                            <p class="control-desc">Contour mạnh = răng theo đúng hình dạng lý tưởng. Yếu = model tự do
+                                sáng tạo.</p>
+                        </div>
+
+                        <!-- Timesteps Slider -->
+                        <div class="control-item control-item-full">
+                            <div class="control-label-row">
+                                <label for="timestepsSlider">
+                                    <span class="control-icon">🎨</span>
+                                    Chi tiết vs Mượt mà
+                                </label>
+                                <span class="control-value" id="timestepsValue">60</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" id="timestepsSlider" min="10" max="200" value="60" step="5"
+                                    class="slider slider-timesteps" />
+                                <div class="slider-labels">
+                                    <span>10 — Nhanh, nét</span>
+                                    <span>60 — Cân bằng</span>
+                                    <span>200 — Mịn, chậm</span>
+                                </div>
+                            </div>
+                            <p class="control-desc">Ít bước = nhanh, chi tiết nét nhưng có thể lỗi. Nhiều bước = mịn
+                                màng nhưng hơi blur.</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="controls-actions">
+                        <button id="regenerateBtn" class="btn btn-regenerate">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                            </svg>
+                            Tái tạo với tham số mới
+                        </button>
+                        <button id="resetParamsBtn" class="btn btn-reset-params">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                            </svg>
+                            Reset mặc định
+                        </button>
+                    </div>
+
+                    <!-- Params changed indicator -->
+                    <div class="params-changed hidden" id="paramsChanged">
+                        <span class="params-dot"></span>
+                        Tham số đã thay đổi — nhấn "Tái tạo" để áp dụng
+                    </div>
+                </div>
+
                 <!-- Download Button -->
                 <div class="action-buttons">
-                    <button id="downloadBtn" class="btn btn-primary">Tải kết quả</button>
-                    <button id="resetBtn" class="btn btn-secondary">Xử lý ảnh khác</button>
+                    <button id="downloadBtn" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Tải kết quả
+                    </button>
+                    <button id="resetBtn" class="btn btn-secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        Xử lý ảnh khác
+                    </button>
                 </div>
             </section>
 
             <!-- Info Section -->
             <section class="info-section">
                 <div class="info-card">
+                    <div class="info-icon">📋</div>
                     <h3>Hướng dẫn sử dụng</h3>
                     <ol>
-                        <li>Tải lên ảnh chân dung của bạn (nên có khuôn mặt rõ, mặt trực diện)</li>
-                        <li>Ứng dụng sẽ tự động xử lý và dự đoán kết quả chỉnh nha</li>
-                        <li>So sánh trước/sau để thấy hiệu quả dự kiến</li>
-                        <li>Tải kết quả về máy để lưu trữ</li>
+                        <li>Tải lên ảnh chân dung (mặt trực diện, rõ nét)</li>
+                        <li>Chờ AI xử lý và dự đoán kết quả chỉnh nha</li>
+                        <li>Dùng <strong>slider</strong> để điều chỉnh: trắng sáng, alignment, chi tiết</li>
+                        <li>Nhấn <strong>"Tái tạo"</strong> để xem kết quả mới</li>
+                        <li>Tải kết quả ưng ý về máy</li>
                     </ol>
                 </div>
 
                 <div class="info-card">
-                    <h3>Thông tin kỹ thuật</h3>
-                    <p>
-                        Ứng dụng sử dụng mô hình học sâu (Deep Learning) để:
-                    </p>
+                    <div class="info-icon">🧠</div>
+                    <h3>Công nghệ AI</h3>
                     <ul>
-                        <li>Phát hiện và phân đoạn khuôn mặt</li>
-                        <li>Phân tích đặc điểm miệng và hàng răng</li>
-                        <li>Dự đoán hình ảnh sau khi chỉnh nha</li>
-                        <li>Tạo preview trực quan để giúp quyết định chỉnh nha</li>
+                        <li><strong>Stage 1:</strong> Phát hiện khuôn mặt → Phân đoạn contour răng</li>
+                        <li><strong>Stage 2:</strong> Tinh chỉnh contour bằng Diffusion Model</li>
+                        <li><strong>Stage 3:</strong> Tạo hình ảnh răng mới với điều chỉnh tương tác</li>
+                        <li><strong>Restore:</strong> Ghép răng mới vào khuôn mặt gốc</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">⚙️</div>
+                    <h3>Giải thích tham số</h3>
+                    <ul>
+                        <li><strong>Whiteness:</strong> Scale cường độ face_light_color — điểm sáng trên răng</li>
+                        <li><strong>Alignment:</strong> Scale teeth_contour conditioning — bám theo contour lý tưởng
+                        </li>
+                        <li><strong>Timesteps:</strong> Số bước denoising — cân bằng tốc độ và chất lượng</li>
                     </ul>
                 </div>
             </section>
@@ -112,4 +293,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

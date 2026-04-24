@@ -1,9 +1,11 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import subprocess, uuid, os
 import aiofiles
 import io
+import json
+import base64
 
 app = FastAPI()
 
@@ -31,6 +33,10 @@ os.makedirs(PROCESS_OUTPUT_DIR, exist_ok=True)
 
 # Cấu hình Timeout (mặc định 30 phút)
 PIPELINE_TIMEOUT = int(os.getenv("PIPELINE_TIMEOUT", "1800"))
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Orthodontics API is running"}
 
 @app.post("/infer")
 async def infer(file: UploadFile = File(...)):
@@ -102,6 +108,106 @@ async def infer(file: UploadFile = File(...)):
     
     finally:
         # 8. Dọn dẹp: Xóa file input tạm sau khi xong (giữ lại output để debug nếu cần)
+        if os.path.exists(inp_path):
+            try:
+                os.remove(inp_path)
+            except Exception as e:
+                print(f"Cảnh báo: Không thể xóa file tạm {inp_path}: {e}")
+
+
+@app.post("/infer-interactive")
+async def infer_interactive(
+    file: UploadFile = File(...),
+    whiteness: float = Form(1.0),
+    alignment: float = Form(1.0),
+    timesteps: int = Form(60),
+):
+    """
+    Interactive inference endpoint.
+    
+    Tham số:
+    - file: Ảnh đầu vào (JPG/PNG)
+    - whiteness: Độ trắng răng (0.0 - 2.0, mặc định 1.0)
+    - alignment: Cường độ alignment contour (0.0 - 2.0, mặc định 1.0) 
+    - timesteps: Số bước diffusion Stage 3 (10 - 200, mặc định 60)
+    """
+    uid = str(uuid.uuid4())
+    
+    original_ext = os.path.splitext(file.filename)[1].lower()
+    if original_ext not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng JPG hoặc PNG")
+
+    # Clamp parameters
+    whiteness = max(0.0, min(2.0, whiteness))
+    alignment = max(0.0, min(2.0, alignment))
+    timesteps = max(10, min(200, timesteps))
+
+    inp_name = f"interactive_{uid}"
+    inp_path = os.path.abspath(os.path.join(ROOT, f"{inp_name}{original_ext}"))
+    expected_output_path = os.path.abspath(os.path.join(MAIN_OUTPUT_DIR, f"{inp_name}.png"))
+
+    try:
+        # Lưu file upload
+        async with aiofiles.open(inp_path, "wb") as f:
+            content = await file.read()
+            await f.write(content)
+
+        print(f"--- Interactive infer: whiteness={whiteness}, alignment={alignment}, timesteps={timesteps} ---")
+        
+        # Gọi main_interactive.py
+        cmd = [
+            "python", "main_interactive.py",
+            "-i", inp_path,
+            "--whiteness", str(whiteness),
+            "--alignment", str(alignment),
+            "--timesteps", str(timesteps),
+        ]
+        
+        proc = subprocess.run(
+            cmd,
+            cwd=CODE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=PIPELINE_TIMEOUT
+        )
+
+        if proc.returncode != 0:
+            error_msg = proc.stderr if proc.stderr else "Lỗi không xác định"
+            print(f"Interactive Pipeline Error: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"Pipeline error: {error_msg[:500]}")
+
+        if not os.path.exists(expected_output_path):
+            stdout_tail = proc.stdout[-500:] if proc.stdout else "No stdout"
+            raise HTTPException(
+                status_code=500,
+                detail=f"Kết quả không tồn tại: {stdout_tail}"
+            )
+
+        # Trả kết quả dạng JSON với base64 image (thuận tiện cho realtime UI)
+        async with aiofiles.open(expected_output_path, "rb") as f:
+            file_bytes = await f.read()
+
+        img_b64 = base64.b64encode(file_bytes).decode('utf-8')
+        
+        return JSONResponse({
+            "status": "success",
+            "image": f"data:image/png;base64,{img_b64}",
+            "params": {
+                "whiteness": whiteness,
+                "alignment": alignment,
+                "timesteps": timesteps,
+            }
+        })
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail=f"Hết thời gian xử lý ({PIPELINE_TIMEOUT}s)")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"System Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
+    
+    finally:
         if os.path.exists(inp_path):
             try:
                 os.remove(inp_path)
