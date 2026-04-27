@@ -1,0 +1,43 @@
+services:
+  triton-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: triton-runtime
+      args:
+        DLIB_WHEELS_IMAGE: orthodontics-dlib-wheels:19.24.2
+    container_name: orthodontics_triton_server
+    security_opt:
+      - label=disable
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    shm_size: '2gb'
+    
+    # Giới hạn log để tránh tràn ổ cứng
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"   # Mỗi file log tối đa 10MB
+        max-file: "3"     # Lưu tối đa 3 file (tổng cộng 30MB)
+
+    # Đảm bảo dịch vụ sẵn sàng trước khi các dịch vụ khác kết nối
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s # Cho phép 60 giây để model load xong trước khi bắt đầu check
+
+    volumes:
+      # :z cho phép SELinux quản lý quyền truy cập trên Fedora
+      - ./triton_model_repository:/models:ro,z
+      - ./Code:/app/Code:z

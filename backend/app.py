@@ -1,11 +1,20 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import subprocess, uuid, os
+import asyncio
+import uuid
+import os
 import aiofiles
 import io
-import json
 import base64
+import numpy as np
+
+try:
+    import tritonclient.http as httpclient
+    from tritonclient.utils import InferenceServerException
+except Exception:
+    httpclient = None
+    InferenceServerException = Exception
 
 app = FastAPI()
 
@@ -33,6 +42,103 @@ os.makedirs(PROCESS_OUTPUT_DIR, exist_ok=True)
 
 # Cấu hình Timeout (mặc định 30 phút)
 PIPELINE_TIMEOUT = int(os.getenv("PIPELINE_TIMEOUT", "1800"))
+TRITON_URL = os.getenv("TRITON_URL", "localhost:8000")
+TRITON_MODEL_NAME = os.getenv("TRITON_MODEL_NAME", "orthodontics_pipeline")
+
+DEFAULT_WHITENESS = float(os.getenv("DEFAULT_WHITENESS", "1.0"))
+DEFAULT_ALIGNMENT = float(os.getenv("DEFAULT_ALIGNMENT", "1.0"))
+DEFAULT_SAMPLE_NUM = int(os.getenv("DEFAULT_SAMPLE_NUM", "60"))
+DEFAULT_SEED = int(os.getenv("DEFAULT_SEED", "-1"))
+
+_triton_client = None
+
+
+def _get_triton_client():
+    global _triton_client
+    if _triton_client is None:
+        if httpclient is None:
+            raise RuntimeError("Không tìm thấy thư viện tritonclient")
+        _triton_client = httpclient.InferenceServerClient(url=TRITON_URL)
+    return _triton_client
+
+
+def _as_bytes(value):
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    if isinstance(value, str):
+        return value.encode("utf-8")
+    return bytes(value)
+
+
+def _call_pipeline_triton(
+    image_bytes: bytes,
+    whiteness: float,
+    alignment: float,
+    sample_num: int,
+    seed: int,
+):
+    client = _get_triton_client()
+
+    inputs = [
+        httpclient.InferInput("image_bytes", [1], "BYTES"),
+        httpclient.InferInput("whiteness", [1], "FP32"),
+        httpclient.InferInput("alignment", [1], "FP32"),
+        httpclient.InferInput("sample_num", [1], "INT32"),
+        httpclient.InferInput("seed", [1], "INT32"),
+    ]
+
+    inputs[0].set_data_from_numpy(np.array([image_bytes], dtype=object))
+    inputs[1].set_data_from_numpy(np.array([whiteness], dtype=np.float32))
+    inputs[2].set_data_from_numpy(np.array([alignment], dtype=np.float32))
+    inputs[3].set_data_from_numpy(np.array([sample_num], dtype=np.int32))
+    inputs[4].set_data_from_numpy(np.array([seed], dtype=np.int32))
+
+    outputs = [
+        httpclient.InferRequestedOutput("result_image"),
+        httpclient.InferRequestedOutput("stage1_debug"),
+    ]
+
+    result = client.infer(TRITON_MODEL_NAME, inputs, outputs=outputs)
+
+    result_image = result.as_numpy("result_image")
+    stage1_debug = result.as_numpy("stage1_debug")
+
+    if result_image is None or len(result_image) == 0:
+        raise RuntimeError("Không nhận được result_image từ Triton")
+
+    result_image_bytes = _as_bytes(result_image[0])
+    stage1_debug_bytes = b""
+    if stage1_debug is not None and len(stage1_debug) > 0:
+        stage1_debug_bytes = _as_bytes(stage1_debug[0])
+
+    return result_image_bytes, stage1_debug_bytes
+
+
+async def _call_pipeline_triton_with_timeout(
+    image_bytes: bytes,
+    whiteness: float,
+    alignment: float,
+    sample_num: int,
+    seed: int,
+):
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(
+                _call_pipeline_triton,
+                image_bytes,
+                whiteness,
+                alignment,
+                sample_num,
+                seed,
+            ),
+            timeout=PIPELINE_TIMEOUT,
+        )
+    except asyncio.TimeoutError as e:
+        raise TimeoutError(f"Hết thời gian xử lý ({PIPELINE_TIMEOUT}s)") from e
 
 @app.get("/")
 async def root():
@@ -48,51 +154,19 @@ async def infer(file: UploadFile = File(...)):
     if original_ext not in [".jpg", ".jpeg", ".png"]:
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng JPG hoặc PNG")
 
-    # Tạo đường dẫn lưu file đầu vào tạm thời với đúng extension
-    inp_name = f"input_{uid}"
-    inp_path = os.path.abspath(os.path.join(ROOT, f"{inp_name}{original_ext}"))
-    
-    # Giả định: main.py luôn xuất ra file .png trong thư mục prediction
-    expected_main_output_path = os.path.abspath(os.path.join(MAIN_OUTPUT_DIR, f"{inp_name}.png"))
-
     try:
-        # 4. Lưu file upload bất đồng bộ
-        async with aiofiles.open(inp_path, "wb") as f:
-            content = await file.read()
-            await f.write(content)
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="File rỗng")
 
-        # 5. Gọi Pipeline xử lý (main.py)
-        print(f"--- Đang xử lý ảnh: {inp_path} ---")
-        # Chạy subprocess tại thư mục Code để main.py tìm được các module liên quan
-        cmd = ["python", "main.py", "-i", inp_path]
-        
-        proc = subprocess.run(
-            cmd, 
-            cwd=CODE_DIR, 
-            capture_output=True, 
-            text=True, 
-            timeout=PIPELINE_TIMEOUT
+        print(f"--- Đang xử lý ảnh bằng Triton: {file.filename} ---")
+        file_bytes, _ = await _call_pipeline_triton_with_timeout(
+            image_bytes=content,
+            whiteness=DEFAULT_WHITENESS,
+            alignment=DEFAULT_ALIGNMENT,
+            sample_num=DEFAULT_SAMPLE_NUM,
+            seed=DEFAULT_SEED,
         )
-
-        # Kiểm tra lỗi khi chạy script
-        if proc.returncode != 0:
-            error_msg = proc.stderr if proc.stderr else "Lỗi không xác định trong main.py"
-            print(f"Pipeline Error: {error_msg}")
-            raise HTTPException(status_code=500, detail=f"Pipeline error: {error_msg[:500]}")
-
-        # 6. Kiểm tra kết quả đầu ra
-        if not os.path.exists(expected_main_output_path):
-            stdout_tail = proc.stdout[-500:] if proc.stdout else "No stdout"
-            print(f"Không tìm thấy kết quả tại: {expected_main_output_path}")
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Kết quả không tồn tại. Kiểm tra log main.py: {stdout_tail}"
-            )
-
-        # 7. Trả về kết quả cho Client
-        # Đọc file kết quả và stream về dưới dạng ảnh PNG
-        async with aiofiles.open(expected_main_output_path, "rb") as f:
-            file_bytes = await f.read()
         
         return StreamingResponse(
             io.BytesIO(file_bytes), 
@@ -100,19 +174,16 @@ async def infer(file: UploadFile = File(...)):
             headers={"Content-Disposition": f"attachment; filename=result_{uid}.png"}
         )
 
-    except subprocess.TimeoutExpired:
+    except TimeoutError:
         raise HTTPException(status_code=504, detail=f"Hết thời gian xử lý ({PIPELINE_TIMEOUT}s)")
+    except InferenceServerException as e:
+        print(f"Triton Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)[:500]}")
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"System Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
-    
-    finally:
-        # 8. Dọn dẹp: Xóa file input tạm sau khi xong (giữ lại output để debug nếu cần)
-        if os.path.exists(inp_path):
-            try:
-                os.remove(inp_path)
-            except Exception as e:
-                print(f"Cảnh báo: Không thể xóa file tạm {inp_path}: {e}")
 
 
 @app.post("/infer-interactive")
@@ -142,50 +213,23 @@ async def infer_interactive(
     alignment = max(0.0, min(2.0, alignment))
     timesteps = max(10, min(200, timesteps))
 
-    inp_name = f"interactive_{uid}"
-    inp_path = os.path.abspath(os.path.join(ROOT, f"{inp_name}{original_ext}"))
-    expected_output_path = os.path.abspath(os.path.join(MAIN_OUTPUT_DIR, f"{inp_name}.png"))
-
     try:
-        # Lưu file upload
-        async with aiofiles.open(inp_path, "wb") as f:
-            content = await file.read()
-            await f.write(content)
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="File rỗng")
 
-        print(f"--- Interactive infer: whiteness={whiteness}, alignment={alignment}, timesteps={timesteps} ---")
-        
-        # Gọi main_interactive.py
-        cmd = [
-            "python", "main_interactive.py",
-            "-i", inp_path,
-            "--whiteness", str(whiteness),
-            "--alignment", str(alignment),
-            "--timesteps", str(timesteps),
-        ]
-        
-        proc = subprocess.run(
-            cmd,
-            cwd=CODE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=PIPELINE_TIMEOUT
+        print(
+            f"--- Interactive infer (Triton): "
+            f"whiteness={whiteness}, alignment={alignment}, timesteps={timesteps} ---"
         )
 
-        if proc.returncode != 0:
-            error_msg = proc.stderr if proc.stderr else "Lỗi không xác định"
-            print(f"Interactive Pipeline Error: {error_msg}")
-            raise HTTPException(status_code=500, detail=f"Pipeline error: {error_msg[:500]}")
-
-        if not os.path.exists(expected_output_path):
-            stdout_tail = proc.stdout[-500:] if proc.stdout else "No stdout"
-            raise HTTPException(
-                status_code=500,
-                detail=f"Kết quả không tồn tại: {stdout_tail}"
-            )
-
-        # Trả kết quả dạng JSON với base64 image (thuận tiện cho realtime UI)
-        async with aiofiles.open(expected_output_path, "rb") as f:
-            file_bytes = await f.read()
+        file_bytes, _ = await _call_pipeline_triton_with_timeout(
+            image_bytes=content,
+            whiteness=whiteness,
+            alignment=alignment,
+            sample_num=timesteps,
+            seed=DEFAULT_SEED,
+        )
 
         img_b64 = base64.b64encode(file_bytes).decode('utf-8')
         
@@ -199,17 +243,13 @@ async def infer_interactive(
             }
         })
 
-    except subprocess.TimeoutExpired:
+    except TimeoutError:
         raise HTTPException(status_code=504, detail=f"Hết thời gian xử lý ({PIPELINE_TIMEOUT}s)")
+    except InferenceServerException as e:
+        print(f"Interactive Triton Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)[:500]}")
     except HTTPException:
         raise
     except Exception as e:
         print(f"System Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
-    
-    finally:
-        if os.path.exists(inp_path):
-            try:
-                os.remove(inp_path)
-            except Exception as e:
-                print(f"Cảnh báo: Không thể xóa file tạm {inp_path}: {e}")

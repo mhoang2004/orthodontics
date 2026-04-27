@@ -59,7 +59,11 @@ def DetectFace(img_path, newsize=(512, 512), face_detector=None, shape_predictor
     shape_predictor : dlib.shape_predictor, optional
         Pre-loaded dlib shape predictor.
     """
-    img = cv2.imread(img_path)
+    if isinstance(img_path, str):
+        img = cv2.imread(img_path)
+    else:
+        img = img_path
+        
     face, landmarks = face_landmark_detect(img, face_detector=face_detector,
                                            shape_predictor=shape_predictor)
 

@@ -1,0 +1,16 @@
+name: "orthodontics_pipeline"
+backend: "python"
+max_batch_size: 0
+
+input [
+  { name: "image_bytes" data_type: TYPE_STRING dims: [1] },
+  { name: "whiteness" data_type: TYPE_FP32 dims: [1] },
+  { name: "alignment" data_type: TYPE_FP32 dims: [1] },
+  { name: "sample_num" data_type: TYPE_INT32 dims: [1] },
+  { name: "seed" data_type: TYPE_INT32 dims: [1] }
+]
+
+output [
+  { name: "result_image" data_type: TYPE_STRING dims: [1] },
+  { name: "stage1_debug" data_type: TYPE_STRING dims: [1] }
+]
