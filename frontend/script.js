@@ -1,5 +1,6 @@
 // ===== CONFIG =====
-const BACKEND_URL = localStorage.getItem('backendUrl') || 'http://localhost:8001';
+const host = window.location.hostname || 'localhost';
+const BACKEND_URL = `http://${host}:8001`;
 const API_ENDPOINT = `${BACKEND_URL}/infer`;
 const API_INTERACTIVE = `${BACKEND_URL}/infer-interactive`;
 
@@ -30,7 +31,7 @@ const paramsChanged = document.getElementById('paramsChanged');
 let currentFile = null;
 let currentAfterImageBlob = null;
 let isProcessing = false;
-
+let count = 0;
 // Default param values
 const DEFAULTS = {
     whiteness: 100,   // slider value (divide by 100 to get actual)
@@ -132,7 +133,12 @@ async function handleImageSelect() {
     beforeImage.src = URL.createObjectURL(file);
 
     clearStatus();
-    showLoading(true, 'Đang xử lý lần đầu... Vui lòng chờ (1-5 phút)');
+    if (count === 0) {
+        showLoading(true, 'Đang xử lý lần đầu... Vui lòng chờ (1-5 phút)');
+        count++;
+    } else {
+        showLoading(true, 'Đang xử lý... Vui lòng chờ (30 giây - 2 phút)');
+    }
     comparisonSection.classList.add('hidden');
 
     try {
@@ -188,7 +194,7 @@ async function handleRegenerate() {
 
     isProcessing = true;
     regenerateBtn.disabled = true;
-
+    uploadBox.style.display = 'none';
     const params = getSliderParams();
     showLoading(true, `Đang tái tạo... (whiteness=${params.whiteness.toFixed(2)}, alignment=${params.alignment.toFixed(2)}, steps=${params.timesteps})`);
     clearStatus();
@@ -237,6 +243,7 @@ async function handleRegenerate() {
         }
     } catch (error) {
         console.error('Regenerate error:', error);
+        uploadBox.style.display = 'block';
         showStatus(`Lỗi tái tạo: ${error.message}`, 'error');
     } finally {
         isProcessing = false;
