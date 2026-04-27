@@ -1,15 +1,10 @@
-# ==========================================================
-# STAGE 1: BUILDER (Biên dịch Dlib và các wheel C++ nặng)
-# ==========================================================
-ARG DLIB_WHEELS_IMAGE=dlib-builder
-
-FROM python:3.10-slim AS dlib-builder
+# Stage 1: Build dlib wheel
+FROM nvcr.io/nvidia/tritonserver:22.08-py3 AS dlib-builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# Cài đặt trình biên dịch hệ thống để build dlib
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -18,66 +13,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libx11-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Biên dịch dlib thành định dạng Wheel trực tiếp ra thư mục /wheels
-# Sử dụng Multi-threading (nproc) để build cực nhanh < 1 phút
 RUN mkdir /wheels \
-    && pip install --no-cache-dir numpy \
+    && pip install --no-cache-dir "numpy<2.0.0" \
     && export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc) \
     && pip wheel --no-cache-dir --wheel-dir /wheels --no-build-isolation dlib==19.24.2
 
-# Cho phép tái sử dụng wheel dlib từ image đã build sẵn.
-# Mặc định dùng stage nội bộ "dlib-builder" nếu không truyền DLIB_WHEELS_IMAGE.
-FROM ${DLIB_WHEELS_IMAGE} AS dlib-cache
-# ==========================================================
-# STAGE 2: TRITON RUNTIME BASE (AI Backend)
-# ==========================================================
-FROM nvcr.io/nvidia/tritonserver:24.01-py3 AS triton-runtime
+# Stage 2: Final Image
+FROM nvcr.io/nvidia/tritonserver:22.08-py3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# Cài đặt các gói phần mềm bắt buộc cho trình biên dịch C++ (Cần thiết cho Dlib, OpenCV)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libopenblas-dev \
-    liblapack-dev \
-    libx11-dev \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    curl \
-    ca-certificates \
+    libopenblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Lấy wheel build sẵn từ stage nội bộ hoặc image cache bên ngoài
-COPY --from=dlib-cache /wheels /wheels
+RUN pip install --upgrade pip
 
-# Copy requirements từ Folder Code/
-COPY Code/requirements.txt /tmp/code-requirements.txt
+# Install torch with extra index url based on requirements.txt
+RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 
-# Cài PyTorch CUDA cho Python backend (model.py import torch tại thời điểm load model).
-# Giữ lọc torch trong requirements để tránh xung đột phiên bản.
-RUN grep -viE '^(torch|torchvision|torchaudio|dlib)\b' /tmp/code-requirements.txt > /tmp/code-requirements-notorch.txt \
-    && pip install --upgrade pip \
-    && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cu121 \
-       torch==2.2.2 \
-    && pip install --no-cache-dir -r /tmp/code-requirements-notorch.txt \
-    && pip install --no-cache-dir --no-index --find-links=/wheels dlib \
-    && rm -rf /wheels /tmp/code-requirements.txt /tmp/code-requirements-notorch.txt
+# Install dlib from built wheel
+COPY --from=dlib-builder /wheels /wheels
+RUN pip install /wheels/dlib-*.whl && rm -rf /wheels
 
-# Tạo một thư mục chứa mã nguồn cho Python backend truy xuất tới
-WORKDIR /app/Code
-RUN mkdir -p /app/Code
+# Install other dependencies
+RUN pip install pyyaml opencv-python-headless diffusers transformers accelerate "numpy<2.0.0" scikit-image natsort matplotlib Pillow tqdm
 
-# Khai báo các port của Triton
-EXPOSE 8000 8001 8002
+COPY Code/ /app/src/
 
-# Khởi chạy Triton Server chỉ định Model Repository mà ta sẽ mount vào trong Bước 3
-CMD ["tritonserver", "--model-repository=/models", "--log-verbose=1", "--backend-config=python,shm-default-byte-size=67108864"]
+ENV DENTAL_CONFIG_PATH=/app/src/Config.yaml
+ENV TRITON_TMP_DIR=/tmp/triton_io
+ENV PYTHONPATH=/app:/app/src
 
-# ==========================================================
-# STAGE 3: DEV IMAGE (Có copy code để chạy không cần volume)
-# ==========================================================
-FROM triton-runtime AS triton-dev
+RUN mkdir -p /tmp/triton_io
 
-# Dùng khi muốn chạy image độc lập không mount ./Code từ host.
-COPY Code /app/Code
+CMD ["tritonserver", "--model-repository=/models", "--log-verbose=1", "--log-info=true", "--log-warning=true", "--log-error=true"]

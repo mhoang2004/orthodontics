@@ -43,7 +43,7 @@ os.makedirs(PROCESS_OUTPUT_DIR, exist_ok=True)
 # Cấu hình Timeout (mặc định 30 phút)
 PIPELINE_TIMEOUT = int(os.getenv("PIPELINE_TIMEOUT", "1800"))
 TRITON_URL = os.getenv("TRITON_URL", "localhost:8000")
-TRITON_MODEL_NAME = os.getenv("TRITON_MODEL_NAME", "orthodontics_pipeline")
+TRITON_MODEL_NAME = os.getenv("TRITON_MODEL_NAME", "dental_pipeline")
 
 DEFAULT_WHITENESS = float(os.getenv("DEFAULT_WHITENESS", "1.0"))
 DEFAULT_ALIGNMENT = float(os.getenv("DEFAULT_ALIGNMENT", "1.0"))
@@ -84,7 +84,7 @@ def _call_pipeline_triton(
     client = _get_triton_client()
 
     inputs = [
-        httpclient.InferInput("image_bytes", [1], "BYTES"),
+        httpclient.InferInput("IMAGE", [1], "BYTES"),
         httpclient.InferInput("whiteness", [1], "FP32"),
         httpclient.InferInput("alignment", [1], "FP32"),
         httpclient.InferInput("sample_num", [1], "INT32"),
@@ -98,14 +98,14 @@ def _call_pipeline_triton(
     inputs[4].set_data_from_numpy(np.array([seed], dtype=np.int32))
 
     outputs = [
-        httpclient.InferRequestedOutput("result_image"),
-        httpclient.InferRequestedOutput("stage1_debug"),
+        httpclient.InferRequestedOutput("PRED_IMAGE"),
+        httpclient.InferRequestedOutput("METADATA"),
     ]
 
     result = client.infer(TRITON_MODEL_NAME, inputs, outputs=outputs)
 
-    result_image = result.as_numpy("result_image")
-    stage1_debug = result.as_numpy("stage1_debug")
+    result_image = result.as_numpy("PRED_IMAGE")
+    stage1_debug = result.as_numpy("METADATA")
 
     if result_image is None or len(result_image) == 0:
         raise RuntimeError("Không nhận được result_image từ Triton")

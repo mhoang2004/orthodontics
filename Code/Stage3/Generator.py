@@ -429,7 +429,7 @@ class Contour2ToothGenerator_FaceColor_LightColor():
         self.mask = data.get('mask').cuda()
         self.mask_image = data.get('mask_image')
 
-    def Mask2TeethData_Process(self, teeth_contour, mouth, mask, face):
+    def Mask2TeethData_Process(self, teeth_contour, mouth, mask, face, whiteness=1.0, alignment_strength=1.0):
         teeth_contour = cv2.cvtColor(teeth_contour, cv2.COLOR_BGR2RGB)
         mouth = cv2.cvtColor(mouth, cv2.COLOR_BGR2RGB)
         mask = np.array(mask)[:,:,0] / 255
@@ -439,10 +439,17 @@ class Contour2ToothGenerator_FaceColor_LightColor():
         clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(20,20))
         mouth_gray = clahe.apply(mouth_gray)
         _, light_mask = cv2.threshold(mouth_gray, 240, 255, cv2.THRESH_BINARY)
-        light_color = np.uint8(mouth * np.expand_dims(light_mask/255, -1))
+        
+        # Apply whiteness factor
+        light_color = np.uint8(np.clip(mouth * np.expand_dims(light_mask/255, -1) * whiteness, 0, 255))
 
         face_color = np.uint8(face * (1. - np.expand_dims(mask, -1)))
         face_light_color = light_color + face_color
+
+        # Apply alignment strength factor to the alignment signal (teeth_contour)
+        if alignment_strength != 1.0:
+            teeth_contour_f = teeth_contour.astype(np.float32) * alignment_strength
+            teeth_contour = np.clip(teeth_contour_f, 0, 255).astype(np.uint8)
 
         teeth_contour = self.transform(teeth_contour)
         mouth = self.transform(mouth)
@@ -455,32 +462,25 @@ class Contour2ToothGenerator_FaceColor_LightColor():
 
         mask_image = teeth_contour*(1. - mask) + mask
         
-        # cv2.imwrite(os.path.join('./result_vis', 'cond_face_color.png'), cv2.cvtColor(face_color, cv2.COLOR_RGB2BGR))
-        # cv2.imwrite(os.path.join('./result_vis', 'cond_teeth_color.png'), cv2.cvtColor(teeth_color, cv2.COLOR_RGB2BGR))
-        # cv2.imwrite(os.path.join('./result_vis', 'cond_color.png'), cv2.cvtColor(teeth_color+face_color, cv2.COLOR_RGB2BGR))
-
         out = {
             'bf_image': teeth_contour,  #three-channel 
             'cond_image': cond_image,   #seven-channel 
             'mask': mask,               #one-channel
             'mask_image': mask_image,   #three-channel
-            # 'cond_face_color': cv2.cvtColor(face_color, cv2.COLOR_RGB2BGR),
-            # 'cond_teeth_color': cv2.cvtColor(teeth_color, cv2.COLOR_RGB2BGR),
             'cond_teeth_color': cv2.cvtColor(face_light_color, cv2.COLOR_RGB2BGR),
         }
         return out
 
-    def predict(self, data):
+    def predict(self, data, whiteness=1.0, alignment_strength=1.0, custom_timesteps=1):
         self.netG.eval()
 
         with torch.no_grad():
             teeth_contour_align = data['crop_teeth_align']
-            # teeth_contour_align = data['crop_teeth']
             mouth = data['crop_mouth']
             mask = data['crop_mask']
             face = data['crop_face']
 
-            out = self.Mask2TeethData_Process(teeth_contour_align, mouth, mask, face)
+            out = self.Mask2TeethData_Process(teeth_contour_align, mouth, mask, face, whiteness=whiteness, alignment_strength=alignment_strength)
             bf_image = out['bf_image']
             cond_image = out['cond_image']
             mask_image = out['mask_image']
@@ -493,7 +493,7 @@ class Contour2ToothGenerator_FaceColor_LightColor():
                 'mask_image': mask_image.unsqueeze(0),   #three-channel      
             })
 
-            self.output, self.visuals = self.netG.restoration(self.cond_image, y_t=torch.randn_like(self.bf_image), y_0=self.bf_image, mask=self.mask, sample_num=1)
+            self.output, self.visuals = self.netG.restoration(self.cond_image, y_t=torch.randn_like(self.bf_image), y_0=self.bf_image, mask=self.mask, sample_num=custom_timesteps)
             prediction = torch.from_numpy(self.visuals[-1].detach().float().cpu().numpy()[::-1, ...].copy())     # torch_BGR_uint8
             return prediction, out['cond_teeth_color']
 

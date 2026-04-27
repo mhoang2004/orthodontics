@@ -35,7 +35,7 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(-1, 1)):
     return img_np.astype(out_type).squeeze()
 
 
-def Stage3_Mask2Teeth(data, mode, state, if_visual=False):
+def Stage3_Mask2Teeth(data, mode, state, if_visual=False, whiteness=1.0, alignment_strength=1.0, custom_timesteps=60):
     if mode in ['M2M2T']:
         from Stage3.Generator import Mask2TeethGenerator as Generator
         with open("./Stage3/config/config_Mask2Teeth.yaml", 'r') as f:
@@ -66,7 +66,19 @@ def Stage3_Mask2Teeth(data, mode, state, if_visual=False):
 
     # initialize the Generator
     generator = Generator(netG)
-    prediction, cond_teeth_color = generator.predict(data)       # tensor_BGR_float32 (-1to1)
+    
+    # Pass interactive parameters if the generator supports them
+    try:
+        prediction, cond_teeth_color = generator.predict(
+            data, 
+            whiteness=whiteness, 
+            alignment_strength=alignment_strength, 
+            custom_timesteps=custom_timesteps
+        )
+    except TypeError:
+        # Fallback for generators that don't support these params yet
+        prediction, cond_teeth_color = generator.predict(data)
+        
     mouth_align = tensor2img(prediction)                          # numpy_BGR_uint8 (0-255)
     # cond_teeth_color = tensor2img(cond_teeth_color)              # numpy_BGR_uint8 (0-255)
 

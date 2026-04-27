@@ -29,3 +29,4 @@ REVIEW_REPORT.md
 SETUP_WINDOWS.md
 environments.yml
 requirements.txt
+triton_model_repository

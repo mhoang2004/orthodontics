@@ -35,7 +35,7 @@ let isProcessing = false;
 const DEFAULTS = {
     whiteness: 100,   // slider value (divide by 100 to get actual)
     alignment: 100,
-    timesteps: 60,
+    timesteps: 30,
 };
 
 // ===== EVENT LISTENERS =====
@@ -101,7 +101,7 @@ function checkParamsChanged() {
     const a = parseInt(alignmentSlider.value);
     const t = parseInt(timestepsSlider.value);
     const changed = (w !== DEFAULTS.whiteness || a !== DEFAULTS.alignment || t !== DEFAULTS.timesteps);
-    
+
     if (changed) {
         paramsChanged.classList.remove('hidden');
     } else {
@@ -115,7 +115,7 @@ function resetParams() {
     timestepsSlider.value = DEFAULTS.timesteps;
     whitenessValue.textContent = '1.00';
     alignmentValue.textContent = '1.00';
-    timestepsValue.textContent = '60';
+    timestepsValue.textContent = '30';
     paramsChanged.classList.add('hidden');
 }
 
@@ -130,7 +130,7 @@ async function handleImageSelect() {
 
     currentFile = file;
     beforeImage.src = URL.createObjectURL(file);
-    
+
     clearStatus();
     showLoading(true, 'Đang xử lý lần đầu... Vui lòng chờ (1-5 phút)');
     comparisonSection.classList.add('hidden');
@@ -148,6 +148,7 @@ async function processImage(file) {
     if (isProcessing) return;
     isProcessing = true;
     uploadBox.style.display = 'none';
+
 
     const formData = new FormData();
     formData.append('file', file);
@@ -169,12 +170,13 @@ async function processImage(file) {
 
         comparisonSection.classList.remove('hidden');
         showStatus('✓ Xử lý thành công! Dùng slider bên dưới để tinh chỉnh.', 'success');
-        
+
         setTimeout(() => {
             comparisonSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 300);
     } catch (error) {
         console.error('Processing error:', error);
+        uploadBox.style.display = 'block';
         throw new Error(`Không thể xử lý ảnh: ${error.message}. Kiểm tra backend API?`);
     } finally {
         isProcessing = false;
@@ -183,10 +185,10 @@ async function processImage(file) {
 
 async function handleRegenerate() {
     if (!currentFile || isProcessing) return;
-    
+
     isProcessing = true;
     regenerateBtn.disabled = true;
-    
+
     const params = getSliderParams();
     showLoading(true, `Đang tái tạo... (whiteness=${params.whiteness.toFixed(2)}, alignment=${params.alignment.toFixed(2)}, steps=${params.timesteps})`);
     clearStatus();
@@ -213,7 +215,7 @@ async function handleRegenerate() {
         if (result.status === 'success') {
             // Update after image from base64
             afterImage.src = result.image;
-            
+
             // Convert base64 to blob for download
             const byteString = atob(result.image.split(',')[1]);
             const mimeString = result.image.split(',')[0].split(':')[1].split(';')[0];
@@ -249,11 +251,11 @@ function downloadResult() {
     const url = URL.createObjectURL(currentAfterImageBlob);
     const link = document.createElement('a');
     link.href = url;
-    
+
     const params = getSliderParams();
     const paramStr = `w${params.whiteness.toFixed(1)}_a${params.alignment.toFixed(1)}_t${params.timesteps}`;
     link.download = `tooth-alignment-${Date.now()}.png`;
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -295,7 +297,7 @@ function showLoading(show, text) {
 // ===== CHECK API STATUS =====
 async function checkAPIStatus() {
     try {
-        const response = await fetch(BACKEND_URL, { 
+        const response = await fetch(BACKEND_URL, {
             method: 'GET',
             signal: AbortSignal.timeout(5000)
         });
