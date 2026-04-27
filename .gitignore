@@ -1,3 +1,10 @@
 Output/
 .agent/
 .claude/
+.env
+.vscode/
+
+# Weights
+*.pth
+*.pt
+*.ckpt
