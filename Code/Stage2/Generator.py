@@ -90,42 +90,6 @@ class Mask2MaskGenerator():
             prediction = torch.from_numpy(self.visuals[-1].detach().float().cpu().numpy()[::-1, ...].copy())   # torch_BGR_uint8
             return prediction
 
-    def predict_with_visuals(self, data, sample_num=5):
-        """Giống predict() nhưng trả thêm list ảnh trung gian diffusion."""
-        self.netG.eval()
-
-        with torch.no_grad():
-            teeth_mask = data['crop_teeth']
-            mouth_mask = data['crop_mask']
-
-            out = self.Mask2MaskData_Process(teeth_mask, mouth_mask)
-            bf_image = out['bf_image']
-            cond_image = out['cond_image']
-            mask_image = out['mask_image']
-            mask = out['mask']
-
-            self.set_input({
-                'bf_image': bf_image.unsqueeze(0),
-                'cond_image': cond_image.unsqueeze(0),
-                'mask': mask.unsqueeze(0),
-                'mask_image': mask_image.unsqueeze(0),
-            })
-
-            self.output, self.visuals = self.netG.restoration(
-                self.cond_image, y_t=torch.randn_like(self.bf_image),
-                y_0=self.bf_image, mask=self.mask, sample_num=sample_num)
-
-            # visuals: tensor [N, C, H, W] – mỗi sample là 1 bước trung gian
-            # bỏ qua ảnh đầu tiên (noise ban đầu), lấy các bước denoise
-            all_steps = []
-            for idx in range(self.visuals.shape[0]):
-                step_tensor = self.visuals[idx]  # [C, H, W]
-                step_bgr = torch.from_numpy(step_tensor.detach().float().cpu().numpy()[::-1, ...].copy())
-                all_steps.append(step_bgr)
-
-            prediction = all_steps[-1]
-            return prediction, all_steps
-
 
 class Contour2ContourGenerator():
     def __init__(self, network):
@@ -195,38 +159,3 @@ class Contour2ContourGenerator():
             self.output, self.visuals = self.netG.restoration(self.cond_image, y_t=torch.randn_like(self.bf_image), y_0=self.bf_image, mask=self.mask, sample_num=1)
             prediction = torch.from_numpy(self.visuals[-1].detach().float().cpu().numpy()[::-1, ...].copy())
             return prediction
-
-    def predict_with_visuals(self, data, sample_num=5):
-        """Giống predict() nhưng trả thêm list ảnh trung gian diffusion."""
-        self.netG.eval()
-
-        with torch.no_grad():
-            teeth_contour = data['crop_teeth']
-            mouth_mask = data['crop_mask']
-
-            out = self.Contour2ContourData_Process(teeth_contour, mouth_mask)
-            bf_image = out['bf_image']
-            cond_image = out['cond_image']
-            mask_image = out['mask_image']
-            mask = out['mask']
-
-            self.set_input({
-                'bf_image': bf_image.unsqueeze(0),
-                'cond_image': cond_image.unsqueeze(0),
-                'mask': mask.unsqueeze(0),
-                'mask_image': mask_image.unsqueeze(0),
-            })
-
-            self.output, self.visuals = self.netG.restoration(
-                self.cond_image, y_t=torch.randn_like(self.bf_image),
-                y_0=self.bf_image, mask=self.mask, sample_num=sample_num)
-
-            # visuals: tensor [N, C, H, W] – mỗi sample là 1 bước trung gian
-            all_steps = []
-            for idx in range(self.visuals.shape[0]):
-                step_tensor = self.visuals[idx]  # [C, H, W]
-                step_bgr = torch.from_numpy(step_tensor.detach().float().cpu().numpy()[::-1, ...].copy())
-                all_steps.append(step_bgr)
-
-            prediction = all_steps[-1]
-            return prediction, all_steps

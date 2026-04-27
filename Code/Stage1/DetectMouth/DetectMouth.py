@@ -25,18 +25,7 @@ def mask(image, parsing, part=11, color=[139, 0, 139]):
 	return changed
 
 
-def DetectMouth(image, bisenet=None, device=None):
-	"""Detect mouth region using BiSeNet face parsing.
-
-	Parameters
-	----------
-	image : numpy.ndarray
-		Input face image (BGR).
-	bisenet : BiSeNet, optional
-		Pre-loaded BiSeNet model (avoids re-loading per call).
-	device : torch.device, optional
-		Target device for inference.
-	"""
+def DetectMouth(image):
 	cp = 'Stage1/DetectMouth/cp/79999_iter.pth'
 	# image = cv2.imread(image_path)
 
@@ -44,7 +33,7 @@ def DetectMouth(image, bisenet=None, device=None):
 	mouth_color = deepcopy(image)
 	mouth_mask = np.zeros_like(image)
 
-	parsing = evaluate(image, cp, net=bisenet, device=device)
+	parsing = evaluate(image, cp)
 	parsing = cv2.resize(parsing, image.shape[0:2], interpolation=cv2.INTER_NEAREST)
 
 	part = 11  # mouth
@@ -94,3 +83,4 @@ if __name__ == '__main__':
 	img_path = './DetectMouth/images/img10.jpg'
 	img = cv2.imread(img_path)
 	DetectMouth(img)
+

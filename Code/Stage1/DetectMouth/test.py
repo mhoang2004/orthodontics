@@ -11,31 +11,6 @@ import torchvision.transforms as transforms
 import cv2
 
 
-def load_bisenet(cp='cp/79999_iter.pth', device=None):
-    """Load BiSeNet weights once and return the model on *device*.
-
-    Parameters
-    ----------
-    cp : str
-        Checkpoint path.
-    device : torch.device, optional
-        Target device.  Falls back to CPU when ``None``.
-
-    Returns
-    -------
-    net : BiSeNet
-        Loaded and eval-ready model.
-    """
-    if device is None:
-        device = torch.device('cpu')
-    n_classes = 19
-    net = BiSeNet(n_classes=n_classes)
-    net.load_state_dict(torch.load(cp, map_location=device))
-    net.to(device)
-    net.eval()
-    return net
-
-
 def vis_parsing_maps(im, parsing_anno, stride, save_im=False, save_path='vis_results/parsing_map_on_im.jpg'):
     # Colors for all 20 parts
     part_colors = [[255, 0, 0], [255, 85, 0], [255, 170, 0],
@@ -72,47 +47,39 @@ def vis_parsing_maps(im, parsing_anno, stride, save_im=False, save_path='vis_res
     # return vis_im
 
 
-def evaluate(img, cp='cp/79999_iter.pth', net=None, device=None):
-    """Run BiSeNet face parsing inference.
+def evaluate(img, cp='cp/79999_iter.pth'):
 
-    Parameters
-    ----------
-    img : numpy.ndarray
-        Input image (BGR).
-    cp : str
-        Checkpoint path.  Ignored when *net* is supplied.
-    net : BiSeNet, optional
-        Pre-loaded BiSeNet model (avoids re-loading per call).
-    device : torch.device, optional
-        Target device.  Falls back to CPU when ``None``.
-    """
-    if device is None:
-        device = torch.device('cpu')
+    # if not os.path.exists(respth):
+    #     os.makedirs(respth)
 
-    if net is None:
-        net = load_bisenet(cp, device)
+	n_classes = 19
+	net = BiSeNet(n_classes=n_classes)
+    #net.cuda()		## uncomment this
+    #net.load_state_dict(torch.load(cp) with map_location=torch.device('cpu'))  ##net.load_state_dict(torch.load(cp))
+	net.load_state_dict(torch.load(cp, map_location = 'cpu'))
+	net.eval()
+	
+	to_tensor = transforms.Compose([
+		transforms.ToTensor(),
+		transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+	])
 
-    to_tensor = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-    ])
-
-    with torch.no_grad():
-        # img = Image.open(image_path)
-        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        image = img.resize((512, 512), Image.BILINEAR)
-        img = to_tensor(image)
-        img = torch.unsqueeze(img, 0)
-        img = img.to(device)
-        out = net(img)[0]
-        parsing = out.squeeze(0).cpu().numpy().argmax(0)
+	with torch.no_grad():
+		# img = Image.open(image_path)
+		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+		image = img.resize((512, 512), Image.BILINEAR)
+		img = to_tensor(image)
+		img = torch.unsqueeze(img, 0)
+		#img = img.cuda()  ## uncomment this
+		out = net(img)[0]
+		parsing = out.squeeze(0).cpu().numpy().argmax(0)
         # print(parsing)
         # print(np.unique(parsing))
 
         # vis_parsing_maps(image, parsing, stride=1, save_im=False, save_path=osp.join(respth, dspth))
-        return parsing
+		return parsing
 
 if __name__ == "__main__":
-    evaluate(dspth='/home/zll/data/CelebAMask-HQ/test-img/116.jpg', cp='79999_iter.pth')
+	evaluate(dspth='/home/zll/data/CelebAMask-HQ/test-img/116.jpg', cp='79999_iter.pth')
 
 

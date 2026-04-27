@@ -3,40 +3,10 @@ import dlib
 import cv2
 
 
-def load_face_models(weight_path='./Stage1/DetectFace/ckpts/shape_predictor_68_face_landmarks.dat'):
-    """Load dlib face detector and shape predictor once (CPU-only).
-
-    Returns
-    -------
-    face_detector : dlib.fhog_object_detector
-    shape_predictor : dlib.shape_predictor
-    """
+def face_landmark_detect(img, weight_path='./Stage1/DetectFace/ckpts/shape_predictor_68_face_landmarks.dat'):
     face_detector = dlib.get_frontal_face_detector()
-    shape_predictor = dlib.shape_predictor(weight_path)
-    return face_detector, shape_predictor
-
-
-def face_landmark_detect(img, weight_path='./Stage1/DetectFace/ckpts/shape_predictor_68_face_landmarks.dat',
-                         face_detector=None, shape_predictor=None):
-    """Detect face landmarks.
-
-    Parameters
-    ----------
-    img : numpy.ndarray
-        Input image (BGR).
-    weight_path : str
-        Path to dlib shape predictor weights.  Ignored when *face_detector*
-        and *shape_predictor* are supplied.
-    face_detector : dlib.fhog_object_detector, optional
-        Pre-loaded detector (avoids re-loading per call).
-    shape_predictor : dlib.shape_predictor, optional
-        Pre-loaded predictor (avoids re-loading per call).
-    """
-    if face_detector is None or shape_predictor is None:
-        face_detector = dlib.get_frontal_face_detector()
-        shape_predictor = dlib.shape_predictor(weight_path)
-
     faces = face_detector(img, 0)
+    shape_predictor = dlib.shape_predictor(weight_path)
     try:
         shape = shape_predictor(img, faces[0])
     except:
@@ -45,27 +15,9 @@ def face_landmark_detect(img, weight_path='./Stage1/DetectFace/ckpts/shape_predi
     return faces[0], landmarks
 
 
-def DetectFace(img_path, newsize=(512, 512), face_detector=None, shape_predictor=None):
-    """Detect and crop face from image.
-
-    Parameters
-    ----------
-    img_path : str
-        Path to input image.
-    newsize : tuple
-        Target size for the cropped face.
-    face_detector : dlib.fhog_object_detector, optional
-        Pre-loaded dlib detector.
-    shape_predictor : dlib.shape_predictor, optional
-        Pre-loaded dlib shape predictor.
-    """
-    if isinstance(img_path, str):
-        img = cv2.imread(img_path)
-    else:
-        img = img_path
-        
-    face, landmarks = face_landmark_detect(img, face_detector=face_detector,
-                                           shape_predictor=shape_predictor)
+def DetectFace(img_path, newsize=(512, 512)):
+    img = cv2.imread(img_path)
+    face, landmarks = face_landmark_detect(img)
 
     # make sure the coordinates will not exceed the img
     h, w = img.shape[:2]

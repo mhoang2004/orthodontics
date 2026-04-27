@@ -21,31 +21,7 @@ def Restore(mouth_align, data):
 
     # crop_face with new teeth (numpy_BGR_uint8_256*128)
     where = np.where((crop_mask[:,:,0]==255) & (crop_mask[:,:,1]==255) & (crop_mask[:,:,2]==255))
-    # apply mild de-yellowing and brightening on predicted teeth within mask
-    try:
-        mouth_adj = mouth_align.copy()
-        # convert to LAB to adjust yellow (b channel) safely
-        lab = cv2.cvtColor(mouth_adj, cv2.COLOR_BGR2LAB).astype(np.float32)
-        L, A, B = cv2.split(lab)
-
-        # indices for masked teeth pixels
-        ys, xs = where[0], where[1]
-        if ys.size > 0:
-            # slightly increase lightness and reduce yellow (positive B) towards neutral 128
-            L_vals = L[ys, xs]
-            B_vals = B[ys, xs]
-            L_vals = np.clip(L_vals + 6.0, 0, 255)                        # brighten a bit
-            B_vals = 128.0 + (B_vals - 128.0) * 0.65                       # reduce yellow component
-            L[ys, xs] = L_vals
-            B[ys, xs] = B_vals
-
-            lab_adj = cv2.merge([L, A, B]).astype(np.uint8)
-            mouth_adj = cv2.cvtColor(lab_adj, cv2.COLOR_LAB2BGR)
-
-        crop_face[ys, xs] = mouth_adj[ys, xs]
-    except Exception:
-        # fallback to direct copy if color adjustment fails
-        crop_face[where[0], where[1]] = mouth_align[where[0], where[1]]
+    crop_face[where[0], where[1]] = mouth_align[where[0], where[1]]
 
     # detect_face with new teeth (numpy_BGR_uint8_512*512)
     detect_face[mouth_coord_y[0]:mouth_coord_y[1], mouth_coord_x[0]:mouth_coord_x[1], :] = crop_face
@@ -60,3 +36,8 @@ def Restore(mouth_align, data):
         "pred_detect_face": detect_face,    #numpy_BGR_uint8_512*512
         "pred_crop_face": crop_face,        #numpy_BGR_uint8_256*128
     }
+
+
+
+
+

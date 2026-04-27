@@ -12,7 +12,6 @@ from Stage1_ToothSegm import Stage1
 from Stage2_Mask2Mask import Stage2_Mask2Mask
 from Stage3_Mask2Teeth import Stage3_Mask2Teeth
 from Restore.Restore import Restore
-from save_stages import save_stage_images
 
 
 if __name__ == '__main__':
@@ -61,9 +60,6 @@ if __name__ == '__main__':
             pred = Restore(stage3_data['crop_mouth_align'], stage3_data)
             pred_face = pred['pred_ori_face']
             cv2.imwrite(os.path.join(os.path.join(args.out_path, 'prediction'), img_name+'.png'), pred_face)
-
-            ### xuất ảnh từng giai đoạn infer
-            save_stage_images(stage1_data, stage2_data, stage3_data, pred, args.out_path, img_name)
         
         except:
             print(img_name)
