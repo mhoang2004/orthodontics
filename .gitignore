@@ -8,3 +8,4 @@ Output/
 *.pth
 *.pt
 *.ckpt
+Code_backups/
