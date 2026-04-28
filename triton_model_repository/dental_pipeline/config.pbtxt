@@ -1,0 +1,62 @@
+name: "dental_pipeline"
+backend: "python"
+max_batch_size: 0
+
+input [
+  {
+    name: "IMAGE"
+    data_type: TYPE_STRING
+    dims: [ -1 ]
+  },
+  {
+    name: "RETURN_INTERMEDIATES"
+    data_type: TYPE_BOOL
+    dims: [ 1 ]
+    optional: true
+  },
+  {
+    name: "whiteness"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+    optional: true
+  },
+  {
+    name: "alignment"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+    optional: true
+  },
+  {
+    name: "sample_num"
+    data_type: TYPE_INT32
+    dims: [ 1 ]
+    optional: true
+  },
+  {
+    name: "seed"
+    data_type: TYPE_INT32
+    dims: [ 1 ]
+    optional: true
+  }
+]
+
+output [
+  {
+    name: "PRED_IMAGE"
+    data_type: TYPE_STRING
+    dims: [ -1 ]
+  },
+  {
+    name: "METADATA"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]

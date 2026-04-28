@@ -1,0 +1,7 @@
+__pycache__/
+.git/
+.gitignore
+*.pyc
+*.log
+*.tmp
+__pycache__/

@@ -1,2 +1,11 @@
 Output/
-Code/
+.agent/
+.claude/
+.env
+.vscode/
+
+# Weights
+*.pth
+*.pt
+*.ckpt
+Code_backups/

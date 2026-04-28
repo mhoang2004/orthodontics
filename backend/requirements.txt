@@ -3,3 +3,4 @@ uvicorn==0.22.0
 aiofiles
 numpy
 python-multipart
+tritonclient[http]

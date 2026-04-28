@@ -1,0 +1,32 @@
+# Git and editor metadata
+.git
+.vscode
+.claude
+
+# Python caches and virtual envs
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.venv
+venv
+
+# Build artifacts and logs
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Large runtime/generated data not needed for image build context
+Data
+Output
+
+# Frontend/backend docs and local notes are not needed for Triton image
+frontend
+backend
+README.md
+QUICKSTART.md
+REVIEW_REPORT.md
+SETUP_WINDOWS.md
+environments.yml
+requirements.txt
+triton_model_repository
