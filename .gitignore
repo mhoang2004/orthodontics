@@ -5,7 +5,8 @@ Output/
 .vscode/
 
 # Weights
-*.pth
 *.pt
 *.ckpt
 Code_backups/
+ckpt_contour2contour_mixed_v2_ContourSegm_4000.pth
+ckpt_contour2tooth_v2_ContourSegm_facecolor_lightcolor_10000.pth
