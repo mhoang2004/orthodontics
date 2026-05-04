@@ -41,19 +41,25 @@ The following images demonstrate the system's interface and workflow:
   <img src="./docs/images/config.png" width="800" alt="System Configuration">
   <p><i>Figure 2: System Configuration and Parameter Setup</i></p>
   <br>
-  <img src="./docs/images/results.png" width="800" alt="Prediction Results">
+  <img src="./docs/images/result1.png" width="800" alt="Prediction Results">
+  <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
+    <br>
+  <img src="./docs/images/result2.png" width="800" alt="Prediction Results">
+  <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
+    <br>
+  <img src="./docs/images/result3.png" width="800" alt="Prediction Results">
   <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
 </div>
 
 ## Setup & Environment
 
 ### System Requirements
-*   **Operating System:** Ubuntu / Linux (Recommended).
+*   **Operating System:** Linux, Window.
 *   **Hardware:** 
     *   **GPU:** NVIDIA GPU (required for loading model stages on Triton Server).
     *   **RAM:** Minimum **16GB System RAM** (ensures stable operation when running multiple containers simultaneously).
     *   **Storage:** Minimum **30GB** disk space for Docker Images and model weights.
-*   **Tools:** Docker, Docker Compose, NVIDIA Container Toolkit.
+*   **Tools:** Docker, Docker Compose, NVIDIA Container Toolkit (linux).
 
 ### Dependencies
 The system utilizes the following main libraries:
