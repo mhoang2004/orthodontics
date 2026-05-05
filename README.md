@@ -49,6 +49,12 @@ The following images demonstrate the system's interface and workflow:
     <br>
   <img src="./docs/images/result3.png" width="800" alt="Prediction Results">
   <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
+      <br>
+  <img src="./docs/images/result4.png" width="800" alt="Prediction Results">
+  <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
+      <br>
+  <img src="./docs/images/result5.png" width="800" alt="Prediction Results">
+  <p><i>Figure 3: Prediction Results - Comparing Before and After Orthodontics</i></p>
 </div>
 
 ## Setup & Environment
